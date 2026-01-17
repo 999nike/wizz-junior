@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wizz Duo (Junior + Senior)</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:0;background:#0b0f14;color:#e8eef6}
+    .wrap{max-width:900px;margin:0 auto;padding:16px}
+    h1{margin:0 0 12px;font-size:20px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    textarea,input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #263244;background:#0f1620;color:#e8eef6}
+    textarea{min-height:110px;resize:vertical}
+    button{cursor:pointer;background:#1f6feb;border:0}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .card{border:1px solid #263244;border-radius:12px;padding:12px;background:#0f1620;margin-top:12px}
+    pre{white-space:pre-wrap;word-break:break-word;margin:0}
+    .tiny{opacity:.75;font-size:12px;margin-top:6px}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:800px){.split{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Wizz Duo</h1>
+
+    <div class="split">
+      <div class="card">
+        <div class="row">
+          <label>
+            Mode
+            <select id="mode">
+              <option value="duo" selected>Duo (Senior → Junior → Senior)</option>
+              <option value="ws">Senior only</option>
+              <option value="wj">Junior only</option>
+            </select>
+          </label>
+        </div>
+
+        <label>Goal / Task</label>
+        <textarea id="goal" placeholder="Example: Design Mission 2 wave plan for Space-Junkz-Shooter."></textarea>
+
+        <label>Context (optional)</label>
+        <textarea id="context" placeholder="Paste any notes about your webpage/game here (short is better)."></textarea>
+
+        <div class="row">
+          <button id="send">Send</button>
+        </div>
+
+        <div class="tiny">
+          Tip: Keep context short. This build is stateless and fast by design.
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Output</strong>
+        <pre id="out" style="margin-top:10px;"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Delegation Log (Duo)</strong>
+      <pre id="log" style="margin-top:10px;opacity:.9;"></pre>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+$("send").addEventListener("click", async () => {
+  const mode = $("mode").value;
+  const goal = $("goal").value.trim();
+  const context = $("context").value.trim();
+
+  if (!goal) return;
+
+  $("send").disabled = true;
+  $("out").textContent = "Working...";
+  $("log").textContent = "";
+
+  try {
+    let url = "/api/duo";
+    let payload = { goal, context };
+
+    if (mode === "ws") { url = "/api/ws"; payload = { goal, context }; }
+    if (mode === "wj") { url = "/api/wj"; payload = { task: goal, context }; }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      $("out").textContent = "Error:\n" + (data.error || JSON.stringify(data, null, 2));
+      return;
+    }
+
+    if (mode === "duo") {
+      $("out").textContent = data.final_answer || JSON.stringify(data, null, 2);
+      $("log").textContent = JSON.stringify(data.delegation_log || {}, null, 2);
+    } else {
+      $("out").textContent = JSON.stringify(data, null, 2);
+    }
+  } catch (e) {
+    $("out").textContent = "Client error:\n" + String(e);
+  } finally {
+    $("send").disabled = false;
+  }
+});
+</script>
+</body>
+</html>
