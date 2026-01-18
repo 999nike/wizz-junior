@@ -3,221 +3,248 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Wizz Duo (Junior + Senior)</title>
+  <title>Wizz Duo Builder</title>
   <style>
-    body{font-family:system-ui,Arial;margin:0;background:#0b0f14;color:#e8eef6}
-    .wrap{max-width:900px;margin:0 auto;padding:16px}
-    h1{margin:0 0 12px;font-size:20px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    textarea,input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #263244;background:#0f1620;color:#e8eef6}
+    :root{
+      --bg:#0b0f14; --panel:#0f1620; --panel2:#0b111a;
+      --text:#e8eef6; --muted:rgba(232,238,246,.75);
+      --line:#263244; --blue:#1f6feb; --red:#d73a49;
+      --radius:14px;
+    }
+    body{font-family:system-ui,Arial;margin:0;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    h1{margin:0 0 12px;font-size:18px;font-weight:700}
+    .grid{display:grid;grid-template-columns:420px 1fr;gap:12px}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--panel)}
+    label{display:block;font-size:12px;opacity:.9;margin:8px 0 6px}
+    textarea,input,select,button{
+      width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);
+      background:var(--panel);color:var(--text);box-sizing:border-box
+    }
     textarea{min-height:110px;resize:vertical}
-    button{cursor:pointer;background:#1f6feb;border:0}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1}
+    button{cursor:pointer;background:var(--blue);border:0;font-weight:700}
+    button.secondary{background:transparent;border:1px solid var(--line)}
+    button.danger{background:var(--red)}
     button:disabled{opacity:.6;cursor:not-allowed}
-    .card{border:1px solid #263244;border-radius:12px;padding:12px;background:#0f1620;margin-top:12px}
-    pre{white-space:pre-wrap;word-break:break-word;margin:0}
-    .tiny{opacity:.75;font-size:12px;margin-top:6px}
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(max-width:800px){.split{grid-template-columns:1fr}}
+    .tiny{opacity:.75;font-size:12px;margin-top:8px}
+    .tabs{display:flex;gap:8px;margin-top:8px}
+    .tab{padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:transparent;cursor:pointer;font-weight:700}
+    .tab.active{background:var(--panel2)}
     .chat-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(max-width:800px){.chat-split{grid-template-columns:1fr}}
+    @media(max-width:980px){.chat-split{grid-template-columns:1fr}}
     .chat-title{font-size:12px;opacity:.8;margin-bottom:6px}
-    .chatbox{border:1px solid #263244;border-radius:12px;padding:10px;min-height:220px;max-height:360px;overflow:auto;background:#0b111a}
-    .bubble{padding:8px 10px;border-radius:12px;margin:8px 0;white-space:pre-wrap;word-break:break-word;border:1px solid #263244;background:#0f1620}
+    .chatbox{
+      border:1px solid var(--line);border-radius:12px;padding:10px;
+      min-height:260px;max-height:460px;overflow:auto;background:var(--panel2)
+    }
+    .bubble{
+      padding:9px 10px;border-radius:12px;margin:8px 0;
+      white-space:pre-wrap;word-break:break-word;border:1px solid var(--line);
+      background:var(--panel)
+    }
     .bubble.meta{opacity:.85}
     .typing{opacity:.7;font-size:12px;margin:6px 0}
+    .status{font-size:12px;opacity:.85;margin-top:10px}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px;opacity:.9}
+    .divider{height:1px;background:var(--line);margin:10px 0}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Wizz Duo</h1>
+    <h1>Wizz Duo Builder <span class="pill">Web Page Generator + Publisher</span></h1>
 
-    <div class="split">
+    <div class="grid">
       <div class="card">
-        <div class="row">
-          <label>
-            Mode
-            <select id="mode">
-              <option value="duo" selected>Duo (Senior → Junior → Senior)</option>
-              <option value="ws">Senior only</option>
-              <option value="wj">Junior only</option>
-            </select>
-          </label>
-        </div>
+        <label>Mode</label>
+        <select id="mode">
+          <option value="web_duo" selected>Build Web Page (WS → WJ → WS)</option>
+          <option value="ws">WS only</option>
+          <option value="wj">WJ only</option>
+        </select>
 
-        <label>Goal / Task</label>
-        <textarea id="goal" placeholder="Example: Design Mission 2 wave plan for Space-Junkz-Shooter."></textarea>
+        <label>Goal</label>
+        <textarea id="goal" placeholder="Example: Build a clean landing page to promote Junkz Shooter."></textarea>
 
         <label>Context (optional)</label>
-        <textarea id="context" placeholder="Paste any notes about your webpage/game here (short is better)."></textarea>
+        <textarea id="context" placeholder="Tone, audience, sections, features, pricing/credit pitch, etc. Short is better."></textarea>
 
-        <div class="row">
-          <button id="send">Send</button>
+        <div class="divider"></div>
+
+        <label>Publish to GitHub Repo (server-side)</label>
+        <div class="tiny">
+          Uses Vercel env vars: <span class="mono">GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH</span>.
+          Token never touches the browser.
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="send">Build</button>
+          <button id="publish" class="secondary" title="Build + commit files into target repo">Build + Publish</button>
         </div>
 
         <div class="tiny">
-          Tip: Keep context short. This build is stateless and fast by design.
+          Tip: Keep goals concrete. Example sections: Hero, Trailer, Screenshots, Features, Roadmap, Contact.
         </div>
       </div>
 
       <div class="card">
-        <strong>Duo Conversation</strong>
-
-        <div class="chat-split" style="margin-top:10px;">
-          <div>
-            <div class="chat-title">WS (Senior)</div>
-            <div id="chatWS" class="chatbox"></div>
+        <div class="row" style="align-items:center">
+          <div style="flex:2">
+            <strong>Duo Conversation</strong>
+            <div class="tiny">Clean output only. Toggle Dev Log if you want internals.</div>
           </div>
-
-          <div>
-            <div class="chat-title">WJ (Junior)</div>
-            <div id="chatWJ" class="chatbox"></div>
+          <div style="flex:1;text-align:right">
+            <div class="tabs" style="justify-content:flex-end">
+              <button id="tabChat" class="tab active" type="button">Chat</button>
+              <button id="tabDev" class="tab" type="button">Dev Log</button>
+            </div>
           </div>
         </div>
 
-        <div class="tiny" id="status" style="margin-top:10px;"></div>
+        <div id="paneChat" style="margin-top:10px;">
+          <div class="chat-split">
+            <div>
+              <div class="chat-title">WS (Senior)</div>
+              <div id="chatWS" class="chatbox"></div>
+            </div>
+            <div>
+              <div class="chat-title">WJ (Junior)</div>
+              <div id="chatWJ" class="chatbox"></div>
+            </div>
+          </div>
+          <div class="status" id="status"></div>
+        </div>
+
+        <div id="paneDev" style="margin-top:10px;display:none">
+          <div class="chat-title">Raw JSON (for debugging)</div>
+          <div id="dev" class="chatbox mono"></div>
+        </div>
       </div>
     </div>
   </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function setStatus(txt) {
-  const el = $("status");
-  if (el) el.textContent = txt || "";
+function setStatus(txt){ const el=$("status"); if(el) el.textContent = txt || ""; }
+function clearUI(){
+  $("chatWS").innerHTML = "";
+  $("chatWJ").innerHTML = "";
+  $("dev").textContent = "";
+  setStatus("");
 }
-
-function clearChats() {
-  const ws = $("chatWS");
-  const wj = $("chatWJ");
-  if (ws) ws.innerHTML = "";
-  if (wj) wj.innerHTML = "";
-}
-
-function addBubble(el, text, cls = "") {
-  if (!el) return;
-  const d = document.createElement("div");
-  d.className = "bubble" + (cls ? " " + cls : "");
-  d.textContent = text;
+function addBubble(el, text, cls=""){
+  const d=document.createElement("div");
+  d.className="bubble"+(cls?" "+cls:"");
+  d.textContent=text;
   el.appendChild(d);
   el.scrollTop = el.scrollHeight;
 }
-
-async function typeLine(el, label) {
-  if (!el) return;
-  const t = document.createElement("div");
-  t.className = "typing";
-  t.textContent = label;
+async function typeLine(el, label){
+  const t=document.createElement("div");
+  t.className="typing";
+  t.textContent=label;
   el.appendChild(t);
   el.scrollTop = el.scrollHeight;
-  await sleep(450);
+  await sleep(350);
   t.remove();
 }
-
-function formatServerError(raw, data) {
-  // Prefer JSON error, otherwise show raw text (HTML/404/etc.)
-  if (data?.error) return String(data.error);
-  if (data) return JSON.stringify(data, null, 2);
-  return raw || "Unknown error";
+function setTab(which){
+  const chatBtn=$("tabChat"), devBtn=$("tabDev");
+  const chatPane=$("paneChat"), devPane=$("paneDev");
+  const chatOn = which === "chat";
+  chatBtn.classList.toggle("active", chatOn);
+  devBtn.classList.toggle("active", !chatOn);
+  chatPane.style.display = chatOn ? "" : "none";
+  devPane.style.display  = chatOn ? "none" : "";
 }
+$("tabChat").addEventListener("click", ()=>setTab("chat"));
+$("tabDev").addEventListener("click", ()=>setTab("dev"));
 
-$("send").addEventListener("click", async () => {
+async function run({ publish=false }){
   const mode = $("mode").value;
   const goal = $("goal").value.trim();
   const context = $("context").value.trim();
   if (!goal) return;
 
   $("send").disabled = true;
-  clearChats();
-  setStatus("Working...");
-
-  const wsEl = $("chatWS");
-  const wjEl = $("chatWJ");
+  $("publish").disabled = true;
+  clearUI();
+  setStatus(publish ? "Building + publishing..." : "Building...");
 
   try {
     let url = "/api/duo";
-    let payload = { goal, context };
+    let payload = { goal, context, mode, publish };
 
     if (mode === "ws") { url = "/api/ws"; payload = { goal, context }; }
     if (mode === "wj") { url = "/api/wj"; payload = { task: goal, context }; }
 
     const res = await fetch(url, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
     });
 
     const raw = await res.text();
-    let data = null;
-    try { data = JSON.parse(raw); } catch {}
+    let data=null; try{ data=JSON.parse(raw); }catch{}
 
-    if (!res.ok) {
-      addBubble(wsEl, "ERROR:\n" + formatServerError(raw, data), "meta");
+    if(!res.ok){
+      addBubble($("chatWS"), "ERROR:\n" + (data?.error || raw || "Unknown error"), "meta");
+      $("dev").textContent = raw || "";
+      setStatus("Error.");
+      return;
+    }
+    if(!data){
+      addBubble($("chatWS"), "ERROR:\nServer returned non-JSON:\n" + raw, "meta");
+      $("dev").textContent = raw || "";
       setStatus("Error.");
       return;
     }
 
-    if (!data) {
-      addBubble(wsEl, "ERROR:\nServer returned non-JSON:\n" + raw, "meta");
-      setStatus("Error.");
-      return;
-    }
+    // Dev log always available
+    $("dev").textContent = JSON.stringify(data, null, 2);
 
-    // Render modes
-    if (mode === "duo") {
-      const log = data.delegation_log || {};
-      const wsPlan = log.ws_plan || {};
-      const tasks = log.tasks || [];
-      const jr = log.junior_results || [];
+    // Duo web build flow
+    if(mode === "web_duo"){
+      const wsEl=$("chatWS"), wjEl=$("chatWJ");
 
-      // WS PLAN
       await typeLine(wsEl, "WS is planning...");
-      const planText =
-        wsPlan.plan_raw
-          ? `PLAN:\n${wsPlan.plan_raw}`
-          : `PLAN:\n${JSON.stringify(wsPlan, null, 2)}`;
-      addBubble(wsEl, planText, "meta");
+      if (data.ws_plan_summary) addBubble(wsEl, data.ws_plan_summary, "meta");
 
-      // WJ EXECUTION
-      for (let i = 0; i < jr.length; i++) {
-        const t = jr[i]?.task || tasks[i] || `Task ${i + 1}`;
-        const r = jr[i]?.result || "";
-        await typeLine(wjEl, "WJ is working...");
-        addBubble(wjEl, `TASK:\n${t}\n\nRESULT:\n${r}`);
-        await sleep(150);
+      await typeLine(wjEl, "WJ is building files...");
+      if (Array.isArray(data.files_built)){
+        addBubble(wjEl, "FILES BUILT:\n" + data.files_built.map(f=>"- "+f).join("\n"), "meta");
       }
 
-      // WS FINAL
       await typeLine(wsEl, "WS is reviewing...");
-      addBubble(wsEl, `FINAL:\n${data.final_answer || ""}`);
+      if (data.final_summary) addBubble(wsEl, data.final_summary);
+
+      if (data.publish_status){
+        addBubble(wsEl, "PUBLISH:\n" + data.publish_status, "meta");
+      }
 
       setStatus("Done.");
       return;
     }
 
-    if (mode === "ws") {
-      await typeLine(wsEl, "WS is responding...");
-      addBubble(wsEl, JSON.stringify(data, null, 2), "meta");
-      setStatus("Done.");
-      return;
-    }
-
-    if (mode === "wj") {
-      await typeLine(wjEl, "WJ is responding...");
-      addBubble(wjEl, JSON.stringify(data, null, 2), "meta");
-      setStatus("Done.");
-      return;
-    }
-
-  } catch (e) {
-    addBubble(wsEl, "CLIENT ERROR:\n" + String(e), "meta");
+    // WS-only / WJ-only fallback rendering
+    addBubble($("chatWS"), JSON.stringify(data, null, 2), "meta");
+    setStatus("Done.");
+  } catch(e){
+    addBubble($("chatWS"), "CLIENT ERROR:\n" + String(e), "meta");
     setStatus("Error.");
   } finally {
     $("send").disabled = false;
+    $("publish").disabled = false;
   }
-});
+}
+
+$("send").addEventListener("click", ()=>run({ publish:false }));
+$("publish").addEventListener("click", ()=>run({ publish:true }));
 </script>
 </body>
 </html>
