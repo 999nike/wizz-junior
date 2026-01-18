@@ -91,12 +91,22 @@ $("send").addEventListener("click", async () => {
       body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
+    const raw = await res.text();
+let data = null;
 
-    if (!res.ok) {
-      $("out").textContent = "Error:\n" + (data.error || JSON.stringify(data, null, 2));
-      return;
-    }
+try { data = JSON.parse(raw); } catch {}
+
+if (!res.ok) {
+  $("out").textContent =
+    "Error:\n" +
+    (data?.error || (data ? JSON.stringify(data, null, 2) : raw));
+  return;
+}
+
+if (!data) {
+  $("out").textContent = "Error:\nServer returned non-JSON:\n" + raw;
+  return;
+}
 
     if (mode === "duo") {
       $("out").textContent = data.final_answer || JSON.stringify(data, null, 2);
