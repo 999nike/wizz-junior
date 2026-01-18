@@ -67,15 +67,19 @@ module.exports = async (req, res) => {
     // FINALIZE: web mode must be JSON
     if (isWeb) {
       let obj = null;
-      try { obj = JSON.parse(content); } catch {}
-      if (!obj?.files || !Array.isArray(obj.files)) {
-        return safeJson(res, 200, {
-          agent: "WS",
-          model,
-          final_summary: "WS did not return valid web-build JSON. Check plan_raw in dev log.",
-          plan_raw: content
-        });
-      }
+try { obj = JSON.parse(content); } catch (e) {
+  return safeJson(res, 500, {
+    error: "WS returned non-JSON in web build mode. This is a contract violation.",
+    raw: content
+  });
+}
+
+if (!Array.isArray(obj.files)) {
+  return safeJson(res, 500, {
+    error: "WS JSON missing required 'files' array.",
+    raw: obj
+  });
+}
       return safeJson(res, 200, { agent: "WS", model, ...obj });
     }
 
