@@ -25,8 +25,6 @@
     .bubble{padding:8px 10px;border-radius:12px;margin:8px 0;white-space:pre-wrap;word-break:break-word;border:1px solid #263244;background:#0f1620}
     .bubble.meta{opacity:.85}
     .typing{opacity:.7;font-size:12px;margin:6px 0}
-
-
   </style>
 </head>
 <body>
@@ -84,16 +82,59 @@
 <script>
 const $ = (id) => document.getElementById(id);
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function setStatus(txt) {
+  const el = $("status");
+  if (el) el.textContent = txt || "";
+}
+
+function clearChats() {
+  const ws = $("chatWS");
+  const wj = $("chatWJ");
+  if (ws) ws.innerHTML = "";
+  if (wj) wj.innerHTML = "";
+}
+
+function addBubble(el, text, cls = "") {
+  if (!el) return;
+  const d = document.createElement("div");
+  d.className = "bubble" + (cls ? " " + cls : "");
+  d.textContent = text;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function typeLine(el, label) {
+  if (!el) return;
+  const t = document.createElement("div");
+  t.className = "typing";
+  t.textContent = label;
+  el.appendChild(t);
+  el.scrollTop = el.scrollHeight;
+  await sleep(450);
+  t.remove();
+}
+
+function formatServerError(raw, data) {
+  // Prefer JSON error, otherwise show raw text (HTML/404/etc.)
+  if (data?.error) return String(data.error);
+  if (data) return JSON.stringify(data, null, 2);
+  return raw || "Unknown error";
+}
+
 $("send").addEventListener("click", async () => {
   const mode = $("mode").value;
   const goal = $("goal").value.trim();
   const context = $("context").value.trim();
-
   if (!goal) return;
 
   $("send").disabled = true;
-  $("out").textContent = "Working...";
-  $("log").textContent = "";
+  clearChats();
+  setStatus("Working...");
+
+  const wsEl = $("chatWS");
+  const wjEl = $("chatWJ");
 
   try {
     let url = "/api/duo";
@@ -109,30 +150,70 @@ $("send").addEventListener("click", async () => {
     });
 
     const raw = await res.text();
-let data = null;
+    let data = null;
+    try { data = JSON.parse(raw); } catch {}
 
-try { data = JSON.parse(raw); } catch {}
-
-if (!res.ok) {
-  $("out").textContent =
-    "Error:\n" +
-    (data?.error || (data ? JSON.stringify(data, null, 2) : raw));
-  return;
-}
-
-if (!data) {
-  $("out").textContent = "Error:\nServer returned non-JSON:\n" + raw;
-  return;
-}
-
-    if (mode === "duo") {
-      $("out").textContent = data.final_answer || JSON.stringify(data, null, 2);
-      $("log").textContent = JSON.stringify(data.delegation_log || {}, null, 2);
-    } else {
-      $("out").textContent = JSON.stringify(data, null, 2);
+    if (!res.ok) {
+      addBubble(wsEl, "ERROR:\n" + formatServerError(raw, data), "meta");
+      setStatus("Error.");
+      return;
     }
+
+    if (!data) {
+      addBubble(wsEl, "ERROR:\nServer returned non-JSON:\n" + raw, "meta");
+      setStatus("Error.");
+      return;
+    }
+
+    // Render modes
+    if (mode === "duo") {
+      const log = data.delegation_log || {};
+      const wsPlan = log.ws_plan || {};
+      const tasks = log.tasks || [];
+      const jr = log.junior_results || [];
+
+      // WS PLAN
+      await typeLine(wsEl, "WS is planning...");
+      const planText =
+        wsPlan.plan_raw
+          ? `PLAN:\n${wsPlan.plan_raw}`
+          : `PLAN:\n${JSON.stringify(wsPlan, null, 2)}`;
+      addBubble(wsEl, planText, "meta");
+
+      // WJ EXECUTION
+      for (let i = 0; i < jr.length; i++) {
+        const t = jr[i]?.task || tasks[i] || `Task ${i + 1}`;
+        const r = jr[i]?.result || "";
+        await typeLine(wjEl, "WJ is working...");
+        addBubble(wjEl, `TASK:\n${t}\n\nRESULT:\n${r}`);
+        await sleep(150);
+      }
+
+      // WS FINAL
+      await typeLine(wsEl, "WS is reviewing...");
+      addBubble(wsEl, `FINAL:\n${data.final_answer || ""}`);
+
+      setStatus("Done.");
+      return;
+    }
+
+    if (mode === "ws") {
+      await typeLine(wsEl, "WS is responding...");
+      addBubble(wsEl, JSON.stringify(data, null, 2), "meta");
+      setStatus("Done.");
+      return;
+    }
+
+    if (mode === "wj") {
+      await typeLine(wjEl, "WJ is responding...");
+      addBubble(wjEl, JSON.stringify(data, null, 2), "meta");
+      setStatus("Done.");
+      return;
+    }
+
   } catch (e) {
-    $("out").textContent = "Client error:\n" + String(e);
+    addBubble(wsEl, "CLIENT ERROR:\n" + String(e), "meta");
+    setStatus("Error.");
   } finally {
     $("send").disabled = false;
   }
