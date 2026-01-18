@@ -1,4 +1,4 @@
-const { safeJson, callOpenRouter } = require("./_openrouter");
+const { safeJson, callOpenRouter, stripCodeFences } = require("./_openrouter");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return safeJson(res, 405, { error: "POST only" });
@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
     });
 
     if (isWeb) {
-      let obj=null; try{ obj=JSON.parse(content); }catch{}
+      let obj=null; try{ obj=JSON.parse(stripCodeFences(content)); }catch{}
       return safeJson(res, 200, {
         agent: "WJ",
         model,
