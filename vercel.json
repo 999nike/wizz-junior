@@ -3,6 +3,12 @@
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "api/*.js", "use": "@vercel/node@3" }
   ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
   "routes": [
     { "src": "/", "dest": "/index.html" },
     { "src": "/api/(.*)", "dest": "/api/$1.js" }
