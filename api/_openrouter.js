@@ -33,4 +33,22 @@ async function callOpenRouter({ apiKey, model, messages }) {
   return content;
 }
 
-module.exports = { safeJson, callOpenRouter };
+function stripCodeFences(s) {
+  if (typeof s !== "string") return s;
+  let t = s.trim();
+
+  // Handles: ```json ... ``` OR ``` ... ```
+  if (t.startsWith("```")) {
+    const firstNewline = t.indexOf("\n");
+    if (firstNewline !== -1) t = t.slice(firstNewline + 1);
+
+    const lastFence = t.lastIndexOf("```");
+    if (lastFence !== -1) t = t.slice(0, lastFence);
+
+    t = t.trim();
+  }
+
+  return t;
+}
+
+module.exports = { safeJson, callOpenRouter, stripCodeFences };

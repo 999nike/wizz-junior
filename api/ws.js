@@ -1,4 +1,4 @@
-const { safeJson, callOpenRouter } = require("./_openrouter");
+const { safeJson, callOpenRouter, stripCodeFences } = require("./_openrouter");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return safeJson(res, 405, { error: "POST only" });
@@ -54,20 +54,20 @@ module.exports = async (req, res) => {
 
     // PLAN: must be JSON
     if (!junior_results) {
-      let obj = null;
-      try { obj = JSON.parse(content); } catch {}
-      return safeJson(res, 200, {
-        agent: "WS",
-        model,
-        tasks: obj?.tasks || null,
-        plan_raw: content
-      });
-    }
+  let obj = null;
+  try { obj = JSON.parse(stripCodeFences(content)); } catch {}
+  return safeJson(res, 200, {
+    agent: "WS",
+    model,
+    tasks: obj?.tasks || null,
+    plan_raw: content
+  });
+}
 
     // FINALIZE: web mode must be JSON
     if (isWeb) {
       let obj = null;
-try { obj = JSON.parse(content); } catch (e) {
+try { obj = JSON.parse(stripCodeFences(content)); } catch (e) {
   return safeJson(res, 500, {
     error: "WS returned non-JSON in web build mode. This is a contract violation.",
     raw: content
