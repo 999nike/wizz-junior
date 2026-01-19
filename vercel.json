@@ -1,14 +1,7 @@
 {
-  "builds": [
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "api/*.js", "use": "@vercel/node@3" }
-  ],
   "functions": {
-    "api/duo.js": { "maxDuration": 30 },
-    "api/ws.js": { "maxDuration": 30 },
-    "api/wj.js": { "maxDuration": 30 },
-    "api/publish.js": { "maxDuration": 30 },
-    "api/repo-tree.js": { "maxDuration": 30 },
-    "api/repo-read.js": { "maxDuration": 30 }
+    "api/*.js": {
+      "maxDuration": 30
+    }
   }
 }
