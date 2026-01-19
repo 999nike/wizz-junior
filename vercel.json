@@ -4,13 +4,15 @@
     { "src": "api/*.js", "use": "@vercel/node@3" }
   ],
   "routes": [
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/api/(.*)", "dest": "/api/$1.js" }
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/", "dest": "/index.html" }
   ],
   "functions": {
     "api/duo.js": { "maxDuration": 30 },
     "api/ws.js": { "maxDuration": 30 },
     "api/wj.js": { "maxDuration": 30 },
-    "api/publish.js": { "maxDuration": 30 }
+    "api/publish.js": { "maxDuration": 30 },
+    "api/repo-tree.js": { "maxDuration": 30 },
+    "api/repo-read.js": { "maxDuration": 30 }
   }
 }
