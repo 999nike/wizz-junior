@@ -1,5 +1,7 @@
 const { safeJson, ghFetch } = require("../_github");
 
+// force redeploy
+
 module.exports = async (req, res) => {
   if (req.method !== "GET") return safeJson(res, 405, { error: "GET only" });
 
