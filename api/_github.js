@@ -56,4 +56,4 @@ async function upsertFile({ token, owner, repo, branch, path, content, message }
   });
 }
 
-module.exports = { safeJson, upsertFile };
+module.exports = { safeJson, ghFetch, upsertFile };
