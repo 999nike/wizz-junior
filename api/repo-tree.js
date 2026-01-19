@@ -1,4 +1,4 @@
-const { safeJson, ghFetch } = require("../_github");
+const { safeJson, ghFetch } = require("./_github");
 
 // force redeploy
 

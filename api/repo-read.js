@@ -1,4 +1,4 @@
-const { safeJson, ghFetch } = require("../_github");
+const { safeJson, ghFetch } = require("./_github");
 
 function decodeContent(b64) {
   // GitHub returns base64 with newlines sometimes
