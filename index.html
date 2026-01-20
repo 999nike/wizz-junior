@@ -155,6 +155,116 @@
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ===========================
+  // JOBS SYSTEM (LOCAL)
+  // ===========================
+  const JOBS_KEY = "wizz_jobs_v1";
+
+  function jobsLoad(){
+    try { return JSON.parse(localStorage.getItem(JOBS_KEY) || "[]"); }
+    catch { return []; }
+  }
+  function jobsSave(jobs){
+    localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
+  }
+  function jobsUpsert(job){
+    const jobs = jobsLoad();
+    const idx = jobs.findIndex(j => j.id === job.id);
+    if (idx >= 0) jobs[idx] = { ...jobs[idx], ...job };
+    else jobs.unshift(job);
+    jobsSave(jobs);
+    jobsRender();
+  }
+  function jobsGet(id){
+    return jobsLoad().find(j => j.id === id) || null;
+  }
+
+  function jobsRender(){
+    const el = $("jobs");
+    if (!el) return;
+
+    const jobs = jobsLoad();
+    el.innerHTML = "";
+
+    if (!jobs.length){
+      const empty = document.createElement("div");
+      empty.className = "tiny";
+      empty.textContent = "No jobs yet.";
+      el.appendChild(empty);
+      return;
+    }
+
+    for (const j of jobs){
+      const d = document.createElement("div");
+      d.className = "bubble meta";
+
+      const title = (j.goal || "").trim().slice(0, 90) || "(no goal)";
+      const mode  = j.mode || "web_duo";
+      const st    = j.status || "unknown";
+
+      const files = Array.isArray(j.files_built) ? j.files_built : [];
+      const filesLine = files.length ? `Files: ${files.join(", ")}` : "";
+
+      d.innerHTML = `
+        <div><strong>${escapeHtml(title)}</strong></div>
+        <div class="tiny">Mode: <span class="mono">${escapeHtml(mode)}</span> • Status: <span class="mono">${escapeHtml(st)}</span></div>
+        ${filesLine ? `<div class="tiny">${escapeHtml(filesLine)}</div>` : ""}
+        <div class="row" style="margin-top:8px;">
+          <button type="button" class="secondary" data-job-open="${escapeHtml(j.id)}">Open</button>
+          <button type="button" class="secondary" data-job-rerun="${escapeHtml(j.id)}">Rerun</button>
+        </div>
+      `;
+      el.appendChild(d);
+    }
+
+    el.querySelectorAll("[data-job-open]").forEach(btn=>{
+      btn.addEventListener("click", () => jobsOpen(btn.getAttribute("data-job-open")));
+    });
+    el.querySelectorAll("[data-job-rerun]").forEach(btn=>{
+      btn.addEventListener("click", () => jobsRerun(btn.getAttribute("data-job-rerun")));
+    });
+  }
+
+  function jobsOpen(id){
+    const j = jobsGet(id);
+    if (!j) return;
+
+    $("goal").value = j.goal || "";
+    $("context").value = j.context || "";
+    $("mode").value = j.mode || "web_duo";
+
+    clearUI();
+
+    if (j.output){
+      $("dev").textContent = JSON.stringify(j.output, null, 2);
+      setTab("dev");
+      setStatus(`Loaded job ${id}`);
+    } else {
+      setTab("chat");
+      setStatus(`Loaded job ${id} (no output yet)`);
+    }
+  }
+
+  async function jobsRerun(id){
+    const j = jobsGet(id);
+    if (!j) return;
+
+    $("goal").value = j.goal || "";
+    $("context").value = j.context || "";
+    $("mode").value = j.mode || "web_duo";
+
+    await run({ publish:false, jobId:id });
+  }
+
+  function escapeHtml(str){
+    return String(str || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
   // ---------------------------
   // Local-only UI preferences
   // ---------------------------
@@ -221,6 +331,17 @@
     clearUI();
     setStatus(publish ? "Building + publishing..." : "Building...");
 
+    // Job tracking
+    const activeJobId = jobId || ("job_" + Date.now());
+    jobsUpsert({
+      id: activeJobId,
+      goal,
+      context,
+      mode,
+      status: "running",
+      started: Date.now()
+    });
+
     try {
       let url = "/api/duo";
       let payload = { goal, context, mode, publish };
@@ -241,17 +362,43 @@
         addBubble($("chatWS"), "ERROR:\n" + (data?.error || raw || "Unknown error"), "meta");
         $("dev").textContent = raw || "";
         setStatus("Error.");
+
+        jobsUpsert({
+          id: activeJobId,
+          status: "error",
+          finished: Date.now(),
+          error: data?.error || raw || "Unknown error",
+          output_raw: raw || ""
+        });
+
         return;
       }
       if(!data){
         addBubble($("chatWS"), "ERROR:\nServer returned non-JSON:\n" + raw, "meta");
         $("dev").textContent = raw || "";
         setStatus("Error.");
+
+        jobsUpsert({
+          id: activeJobId,
+          status: "error",
+          finished: Date.now(),
+          error: "Server returned non-JSON",
+          output_raw: raw || ""
+        });
+
         return;
       }
 
       // Dev log always available
       $("dev").textContent = JSON.stringify(data, null, 2);
+
+      // Update job with partial output
+      jobsUpsert({
+        id: activeJobId,
+        status: "received",
+        output: data,
+        files_built: Array.isArray(data.files_built) ? data.files_built : (Array.isArray(data.files) ? data.files.map(f=>f.path) : null)
+      });
 
       // Duo web build flow
       if(mode === "web_duo"){
@@ -273,15 +420,44 @@
         }
 
         setStatus("Done.");
+
+        jobsUpsert({
+          id: activeJobId,
+          status: "done",
+          finished: Date.now(),
+          output: data,
+          files_built: Array.isArray(data.files_built) ? data.files_built : null
+        });
+
         return;
       }
 
       // WS-only / WJ-only fallback rendering
       addBubble($("chatWS"), JSON.stringify(data, null, 2), "meta");
       setStatus("Done.");
+
+      jobsUpsert({
+        id: activeJobId,
+        status: "done",
+        finished: Date.now(),
+        output: data,
+        files_built: Array.isArray(data.files_built) ? data.files_built : (Array.isArray(data.files) ? data.files.map(f=>f.path) : null)
+      });
     } catch(e){
       addBubble($("chatWS"), "CLIENT ERROR:\n" + String(e), "meta");
       setStatus("Error.");
+
+      try {
+        const activeJobId = jobId || null;
+        if (activeJobId){
+          jobsUpsert({
+            id: activeJobId,
+            status: "error",
+            finished: Date.now(),
+            error: String(e)
+          });
+        }
+      } catch {}
     } finally {
       $("send").disabled = false;
       $("publish").disabled = false;
@@ -290,7 +466,15 @@
 
   $("send").addEventListener("click", ()=>run({ publish:false }));
   $("publish").addEventListener("click", ()=>run({ publish:true }));
+
+  // Run as Job creates a new job id and runs without publishing
+  const newJobBtn = $("newJob");
+  if (newJobBtn){
+    newJobBtn.addEventListener("click", ()=>run({ publish:false, jobId: "job_" + Date.now() }));
+  }
+
   loadLocalPrefs();
+  jobsRender();
   </script>
 
   <!-- ERUDA: working, always-available launcher (no <button> styling conflicts) -->
