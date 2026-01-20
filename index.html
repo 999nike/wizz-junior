@@ -274,15 +274,46 @@ $("send").addEventListener("click", ()=>run({ publish:false }));
 $("publish").addEventListener("click", ()=>run({ publish:true }));
 loadLocalPrefs();
 <script>
-  if (
-    location.search.includes("debug=1") ||
-    localStorage.getItem("debug") === "1"
-  ) {
+  (function(){
+    const debugOn =
+      location.search.includes("debug=1") ||
+      localStorage.getItem("debug") === "1";
+
+    if (!debugOn) return;
+
+    // Visible badge so we KNOW the condition fired (no console needed)
+    const badge = document.createElement("div");
+    badge.textContent = "DEBUG ON (loading eruda...)";
+    badge.style.cssText = [
+      "position:fixed",
+      "bottom:10px",
+      "left:10px",
+      "z-index:999999",
+      "padding:6px 10px",
+      "border-radius:999px",
+      "font:12px system-ui,Arial",
+      "background:#111",
+      "color:#fff",
+      "border:1px solid rgba(255,255,255,.25)",
+      "opacity:.9"
+    ].join(";");
+    document.body.appendChild(badge);
+
     var s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/eruda";
-    s.onload = () => eruda.init();
+    s.onload = function(){
+      try {
+        eruda.init();
+        badge.textContent = "DEBUG ON (eruda loaded)";
+      } catch (e) {
+        badge.textContent = "DEBUG ON (eruda init failed)";
+      }
+    };
+    s.onerror = function(){
+      badge.textContent = "DEBUG ON (eruda blocked/unreachable)";
+    };
     document.body.appendChild(s);
-  }
+  })();
 </script>
 </body>
 </html>
