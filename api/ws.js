@@ -66,22 +66,51 @@ module.exports = async (req, res) => {
 
     // FINALIZE: web mode must be JSON
     if (isWeb) {
-      let obj = null;
-try { obj = JSON.parse(stripCodeFences(content)); } catch (e) {
-  return safeJson(res, 500, {
-    error: "WS returned non-JSON in web build mode. This is a contract violation.",
-    raw: content
-  });
-}
+  let obj = null;
 
-if (!Array.isArray(obj.files)) {
-  return safeJson(res, 500, {
-    error: "WS JSON missing required 'files' array.",
-    raw: obj
-  });
-}
-      return safeJson(res, 200, { agent: "WS", model, ...obj });
+  // First parse attempt
+  try {
+    obj = JSON.parse(stripCodeFences(content));
+  } catch {}
+
+  // One repair attempt if JSON failed
+  if (!obj) {
+    const repairPrompt = [
+      "You violated the contract.",
+      "Return ONLY valid JSON.",
+      "Do not add text. Do not explain.",
+      "Required shape:",
+      "{\"final_summary\":\"...\",\"files\":[{\"path\":\"index.html\",\"content\":\"...\"}],\"files_built\":[\"index.html\"]}"
+    ].join(" ");
+
+    const repaired = await callOpenRouter({
+      apiKey,
+      model,
+      messages: [
+        { role: "system", content: repairPrompt },
+        { role: "user", content }
+      ]
+    });
+
+    try {
+      obj = JSON.parse(stripCodeFences(repaired));
+    } catch {
+      return safeJson(res, 500, {
+        error: "WS JSON repair failed.",
+        raw: repaired
+      });
     }
+  }
+
+  if (!Array.isArray(obj.files)) {
+    return safeJson(res, 500, {
+      error: "WS JSON missing required 'files' array.",
+      raw: obj
+    });
+  }
+
+  return safeJson(res, 200, { agent: "WS", model, ...obj });
+}
 
     return safeJson(res, 200, { agent: "WS", model, final: content });
   } catch (e) {
