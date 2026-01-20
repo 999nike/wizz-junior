@@ -71,14 +71,21 @@
 
         <label>Context (optional)</label>
         <textarea id="context" placeholder="Tone, audience, sections, features, pricing/credit pitch, etc. Short is better."></textarea>
+<div class="divider"></div>
 
-        <div class="divider"></div>
+<label>Repo / Project Label (local only)</label>
+<input id="repoLabel" placeholder="Example: 999nike/junkz-shooter-landing (main)" />
+<div class="tiny">
+  Saved to your browser only (localStorage). This does NOT change where publishing goes.
+</div>
 
-        <label>Publish to GitHub Repo (server-side)</label>
-        <div class="tiny">
-          Uses Vercel env vars: <span class="mono">GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH</span>.
-          Token never touches the browser.
-        </div>
+<div class="divider"></div>
+
+<label>Publish to GitHub Repo (server-side)</label>
+<div class="tiny">
+  Uses Vercel env vars: <span class="mono">GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH</span>.
+  Token never touches the browser.
+</div>
 
         <div class="row" style="margin-top:10px;">
           <button id="send">Build</button>
@@ -129,6 +136,26 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------------------------
+// Local-only UI preferences
+// ---------------------------
+const LS_KEYS = {
+  repoLabel: "wizzduo_repoLabel_v1"
+};
+
+function loadLocalPrefs(){
+  const el = $("repoLabel");
+  if (!el) return;
+
+  const saved = localStorage.getItem(LS_KEYS.repoLabel);
+  if (saved) el.value = saved;
+
+  // Save on change (lightweight + reliable)
+  el.addEventListener("input", () => {
+    localStorage.setItem(LS_KEYS.repoLabel, el.value.trim());
+  });
+}
 
 function setStatus(txt){ const el=$("status"); if(el) el.textContent = txt || ""; }
 function clearUI(){
@@ -245,6 +272,7 @@ async function run({ publish=false }){
 
 $("send").addEventListener("click", ()=>run({ publish:false }));
 $("publish").addEventListener("click", ()=>run({ publish:true }));
+loadLocalPrefs();
 </script>
 </body>
 </html>
