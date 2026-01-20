@@ -129,6 +129,40 @@
 <div id="jobs" class="chatbox" style="margin-top:8px; max-height:220px"></div>
 <!-- ===== JOBS PANEL END ===== -->
 
+
+<!-- ===== REPO TOOLS PANEL START ===== -->
+<div class="divider"></div>
+
+<div class="row" style="align-items:center">
+  <strong>Repo Tools</strong>
+  <div style="text-align:right">
+    <button id="repoRefresh" class="secondary" type="button">Load Repo Files</button>
+  </div>
+</div>
+
+<div class="tiny">
+  Reads/writes the single repo configured by server env vars (<span class="mono">GITHUB_OWNER / GITHUB_REPO / GITHUB_BRANCH</span>).
+</div>
+
+<label style="margin-top:10px;">File</label>
+<div class="row">
+  <select id="repoFile"></select>
+  <button id="repoOpen" class="secondary" type="button">Open</button>
+</div>
+
+<label style="margin-top:10px;">Editor</label>
+<textarea id="repoEditor" class="mono" style="min-height:220px" placeholder="Open a file to edit it here..."></textarea>
+
+<div class="row" style="margin-top:10px;">
+  <button id="repoPublish" class="secondary" type="button">Publish File</button>
+  <button id="repoDiscard" class="danger" type="button">Discard Changes</button>
+</div>
+
+<div class="tiny" id="repoStatus"></div>
+<!-- ===== REPO TOOLS PANEL END ===== -->
+
+        <div id="paneChat" style="margin-top:10px;">
+
         <div id="paneChat" style="margin-top:10px;">
           <div class="chat-split">
             <div>
@@ -154,6 +188,198 @@
   <script>
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ===========================
+  // REPO TOOLS (TREE / READ / EDIT / PUBLISH)
+  // ===========================
+  const REPO_LS = {
+    lastPath: "wizz_repo_lastPath_v1",
+    lastDraft: "wizz_repo_lastDraft_v1"
+  };
+
+  function repoSetStatus(msg){
+    const el = $("repoStatus");
+    if (el) el.textContent = msg || "";
+  }
+
+  function repoSelectedPath(){
+    const sel = $("repoFile");
+    return sel ? String(sel.value || "").trim() : "";
+  }
+
+  function repoSetSelectOptions(paths){
+    const sel = $("repoFile");
+    if (!sel) return;
+
+    sel.innerHTML = "";
+    const list = Array.isArray(paths) ? paths : [];
+    if (!list.length){
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No files (or repo not loaded)";
+      sel.appendChild(opt);
+      return;
+    }
+
+    for (const p of list){
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    }
+
+    // Restore last file if present
+    const last = localStorage.getItem(REPO_LS.lastPath) || "";
+    if (last && list.includes(last)){
+      sel.value = last;
+    }
+  }
+
+  async function repoLoadTree(){
+    repoSetStatus("Loading repo tree...");
+    const btn = $("repoRefresh");
+    if (btn) btn.disabled = true;
+
+    try{
+      const res = await fetch("/api/repo-tree");
+      const data = await res.json().catch(()=>null);
+
+      if (!res.ok || !data?.ok){
+        repoSetSelectOptions([]);
+        repoSetStatus("Repo tree error: " + (data?.error || ("HTTP " + res.status)));
+        return;
+      }
+
+      const paths = (data.files || []).map(f => f.path).filter(Boolean);
+      paths.sort((a,b)=>a.localeCompare(b));
+
+      repoSetSelectOptions(paths);
+      repoSetStatus("Loaded: " + (data.target || "repo") + " (" + paths.length + " files)");
+    } catch(e){
+      repoSetSelectOptions([]);
+      repoSetStatus("Repo tree error: " + String(e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function repoOpenFile(path){
+    const p = String(path || "").trim();
+    if (!p){
+      repoSetStatus("Pick a file first.");
+      return;
+    }
+
+    repoSetStatus("Reading: " + p + " ...");
+    const openBtn = $("repoOpen");
+    if (openBtn) openBtn.disabled = true;
+
+    try{
+      const url = "/api/repo-read?path=" + encodeURIComponent(p);
+      const res = await fetch(url);
+      const data = await res.json().catch(()=>null);
+
+      if (!res.ok || !data?.ok){
+        repoSetStatus("Read error: " + (data?.error || ("HTTP " + res.status)));
+        return;
+      }
+
+      localStorage.setItem(REPO_LS.lastPath, p);
+      localStorage.removeItem(REPO_LS.lastDraft);
+
+      const ed = $("repoEditor");
+      if (ed) ed.value = data.content || "";
+
+      repoSetStatus("Opened: " + (data.target || "") + " :: " + p);
+    } catch(e){
+      repoSetStatus("Read error: " + String(e));
+    } finally {
+      if (openBtn) openBtn.disabled = false;
+    }
+  }
+
+  async function repoPublishCurrent(){
+    const p = repoSelectedPath();
+    const ed = $("repoEditor");
+    const content = ed ? String(ed.value || "") : "";
+
+    if (!p){
+      repoSetStatus("Pick a file first.");
+      return;
+    }
+
+    repoSetStatus("Publishing: " + p + " ...");
+    const pubBtn = $("repoPublish");
+    if (pubBtn) pubBtn.disabled = true;
+
+    try{
+      const res = await fetch("/api/publish", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ files: [{ path: p, content }] })
+      });
+
+      const data = await res.json().catch(()=>null);
+
+      if (!res.ok || !data?.ok){
+        repoSetStatus("Publish error: " + (data?.error || ("HTTP " + res.status)));
+        return;
+      }
+
+      localStorage.setItem(REPO_LS.lastPath, p);
+      localStorage.removeItem(REPO_LS.lastDraft);
+
+      repoSetStatus("Published to: " + (data.target || "") + " :: " + (data.wrote?.[0] || p));
+    } catch(e){
+      repoSetStatus("Publish error: " + String(e));
+    } finally {
+      if (pubBtn) pubBtn.disabled = false;
+    }
+  }
+
+  function repoDiscardChanges(){
+    const p = repoSelectedPath();
+    if (!p){
+      repoSetStatus("Pick a file first.");
+      return;
+    }
+    // Re-open from source to discard local edits
+    repoOpenFile(p);
+  }
+
+  function repoWireUI(){
+    const refresh = $("repoRefresh");
+    if (refresh) refresh.addEventListener("click", repoLoadTree);
+
+    const open = $("repoOpen");
+    if (open) open.addEventListener("click", ()=>repoOpenFile(repoSelectedPath()));
+
+    const pub = $("repoPublish");
+    if (pub) pub.addEventListener("click", repoPublishCurrent);
+
+    const disc = $("repoDiscard");
+    if (disc) disc.addEventListener("click", repoDiscardChanges);
+
+    const sel = $("repoFile");
+    if (sel){
+      sel.addEventListener("change", ()=>{
+        const p = repoSelectedPath();
+        if (p) localStorage.setItem(REPO_LS.lastPath, p);
+      });
+    }
+
+    const ed = $("repoEditor");
+    if (ed){
+      ed.addEventListener("input", ()=>{
+        // draft is optional; helps when phone refreshes
+        localStorage.setItem(REPO_LS.lastDraft, String(ed.value || ""));
+      });
+
+      // restore draft if exists
+      const draft = localStorage.getItem(REPO_LS.lastDraft);
+      if (draft) ed.value = draft;
+    }
+  }
 
 // ===========================
   // JOBS SYSTEM (LOCAL)
@@ -474,6 +700,9 @@
   }
 
   loadLocalPrefs();
+  repoWireUI();
+  // Optional: auto-load tree on first visit
+  // repoLoadTree();
   jobsRender();
   </script>
 
