@@ -273,8 +273,17 @@ async function run({ publish=false }){
 $("send").addEventListener("click", ()=>run({ publish:false }));
 $("publish").addEventListener("click", ()=>run({ publish:true }));
 loadLocalPrefs();
-<!-- Dev console (single include) -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>try{eruda.init();console.log("%c📟 Eruda Console Active","color:#47b0ff;font-weight:bold;");}catch(_){}</script>
+</script>
+
+<!-- Dev console (Eruda) - always on -->
+<script src="https://unpkg.com/eruda/eruda.min.js"></script>
+<script>
+  try {
+    eruda.init();
+    // Optional: auto-open so you can’t miss it
+    // eruda.show();
+  } catch (_) {}
+</script>
+
 </body>
 </html>
