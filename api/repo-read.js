@@ -23,10 +23,16 @@ module.exports = async (req, res) => {
     if (!path) return safeJson(res, 400, { error: "Missing query: ?path=" });
     if (path.includes("..")) return safeJson(res, 400, { error: "Invalid path." });
 
-    const data = await ghFetch(
-      `/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`,
-      { token }
-    );
+    // Encode each segment so nested paths like "site/index.html" work reliably.
+const safePath = String(path || "")
+  .split("/")
+  .map(seg => encodeURIComponent(seg))
+  .join("/");
+
+const data = await ghFetch(
+  `/repos/${owner}/${repo}/contents/${safePath}?ref=${encodeURIComponent(branch)}`,
+  { token }
+);
 
     // If it's not a file, refuse
     if (data?.type !== "file") {

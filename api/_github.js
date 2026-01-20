@@ -6,6 +6,15 @@ function safeJson(res, code, obj) {
 
 const GH = "https://api.github.com";
 
+// GitHub "contents" endpoint expects slashes as path separators.
+// Encode each segment, NOT the whole string (or "/" becomes "%2F" and breaks nested paths).
+function ghContentsPath(path) {
+  return String(path || "")
+    .split("/")
+    .map(seg => encodeURIComponent(seg))
+    .join("/");
+}
+
 async function ghFetch(path, { token, method="GET", body=null }) {
   const r = await fetch(`${GH}${path}`, {
     method,
@@ -34,7 +43,10 @@ async function upsertFile({ token, owner, repo, branch, path, content, message }
   // 1) Get existing file SHA (if exists)
   let sha = null;
   try {
-    const existing = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`, { token });
+    const existing = await ghFetch(
+  `/repos/${owner}/${repo}/contents/${ghContentsPath(path)}?ref=${encodeURIComponent(branch)}`,
+  { token }
+);
     sha = existing?.sha || null;
   } catch (e) {
     // If not found, ignore — we will create it
@@ -49,7 +61,7 @@ async function upsertFile({ token, owner, repo, branch, path, content, message }
   };
   if (sha) body.sha = sha;
 
-  return ghFetch(`/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
+  return ghFetch(`/repos/${owner}/${repo}/contents/${ghContentsPath(path)}`, {
     token,
     method: "PUT",
     body
