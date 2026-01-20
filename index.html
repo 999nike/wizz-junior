@@ -153,6 +153,17 @@
 <label style="margin-top:10px;">Editor</label>
 <textarea id="repoEditor" class="mono" style="min-height:220px" placeholder="Open a file to edit it here..."></textarea>
 
+<label style="margin-top:10px;">AI Edit Instruction</label>
+<textarea id="aiInstr" placeholder="Example: Refactor this CSS to improve spacing and make buttons consistent. Keep existing styles."></textarea>
+
+<div class="row" style="margin-top:10px;">
+  <button id="aiDraft" class="secondary" type="button">Ask WJ (Draft)</button>
+  <button id="aiApply" class="secondary" type="button">Apply Draft</button>
+  <button id="aiUndo" class="danger" type="button">Undo</button>
+</div>
+
+<div class="tiny" id="aiStatus"></div>
+
 <div class="row" style="margin-top:10px;">
   <button id="repoPublish" class="secondary" type="button">Publish File</button>
   <button id="repoDiscard" class="danger" type="button">Discard Changes</button>
@@ -343,6 +354,148 @@
     }
     // Re-open from source to discard local edits
     repoOpenFile(p);
+  }
+
+  // ===========================
+  // AI COPILOT (WJ FILE EDITOR)
+  // ===========================
+  const AI_LS = {
+    draft: "wizz_ai_draft_v1",
+    before: "wizz_ai_before_v1",
+    lastInstr: "wizz_ai_instr_v1"
+  };
+
+  function aiSetStatus(msg){
+    const el = $("aiStatus");
+    if (el) el.textContent = msg || "";
+  }
+
+  function aiGetOpenFileState(){
+    const path = repoSelectedPath();
+    const ed = $("repoEditor");
+    const content = ed ? String(ed.value || "") : "";
+    return { path, content };
+  }
+
+  async function aiAskWJDraft(){
+    const { path, content } = aiGetOpenFileState();
+    const instrEl = $("aiInstr");
+    const instr = instrEl ? String(instrEl.value || "").trim() : "";
+
+    if (!path){
+      aiSetStatus("Open a file first.");
+      return;
+    }
+    if (!instr){
+      aiSetStatus("Write an instruction first.");
+      return;
+    }
+
+    // persist last instruction
+    localStorage.setItem(AI_LS.lastInstr, instr);
+
+    aiSetStatus("Asking WJ for a draft...");
+    const btn = $("aiDraft");
+    if (btn) btn.disabled = true;
+
+    try{
+      // Store "before" snapshot for undo
+      localStorage.setItem(AI_LS.before, JSON.stringify({ path, content, ts: Date.now() }));
+
+      const prompt =
+        "You are WJ (Junior), acting as a code editor.\n\n" +
+        "TASK: Modify the file content according to the instruction.\n" +
+        "- Return ONLY the full updated file content.\n" +
+        "- Do NOT wrap in markdown.\n" +
+        "- Do NOT add explanations.\n" +
+        "- Preserve unrelated code exactly.\n\n" +
+        "FILE PATH:\n" + path + "\n\n" +
+        "INSTRUCTION:\n" + instr + "\n\n" +
+        "CURRENT FILE CONTENT:\n" +
+        content;
+
+      const res = await fetch("/api/wj", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ task: prompt, context: "" })
+      });
+
+      const raw = await res.text();
+      let data=null; try{ data = JSON.parse(raw); } catch {}
+
+      if (!res.ok){
+        aiSetStatus("WJ error (HTTP " + res.status + "): " + (data?.error || raw || "Unknown"));
+        return;
+      }
+
+      // Try common response shapes
+      const draft =
+        (typeof data === "string" ? data : null) ||
+        data?.content ||
+        data?.result ||
+        data?.text ||
+        data?.message ||
+        data?.response ||
+        data?.output ||
+        null;
+
+      if (!draft || typeof draft !== "string"){
+        aiSetStatus("WJ returned no draft content. Check Dev Log.");
+        return;
+      }
+
+      localStorage.setItem(AI_LS.draft, JSON.stringify({ path, draft, ts: Date.now() }));
+      aiSetStatus("Draft ready. Review then click Apply Draft.");
+      // Also show in Dev Log
+      $("dev").textContent = JSON.stringify({ wj_raw: data }, null, 2);
+      setTab("dev");
+    } catch(e){
+      aiSetStatus("Client error: " + String(e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function aiApplyDraft(){
+    const pack = localStorage.getItem(AI_LS.draft);
+    if (!pack){
+      aiSetStatus("No draft stored. Click Ask WJ (Draft) first.");
+      return;
+    }
+
+    let obj=null;
+    try{ obj = JSON.parse(pack); } catch {}
+
+    if (!obj?.draft){
+      aiSetStatus("Draft data is corrupted.");
+      return;
+    }
+
+    const ed = $("repoEditor");
+    if (ed) ed.value = obj.draft;
+
+    aiSetStatus("Draft applied to editor. You can Publish File when ready.");
+  }
+
+  function aiUndo(){
+    const pack = localStorage.getItem(AI_LS.before);
+    if (!pack){
+      aiSetStatus("No undo snapshot stored.");
+      return;
+    }
+
+    let obj=null;
+    try{ obj = JSON.parse(pack); } catch {}
+
+    if (!obj?.content){
+      aiSetStatus("Undo data is corrupted.");
+      return;
+    }
+
+    const ed = $("repoEditor");
+    if (ed) ed.value = obj.content;
+
+    aiSetStatus("Restored previous content (undo).");
   }
 
   function repoWireUI(){
