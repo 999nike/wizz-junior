@@ -112,6 +112,23 @@
           </div>
         </div>
 
+        <!-- ===== JOBS PANEL START ===== -->
+<div class="divider"></div>
+
+<div class="row" style="align-items:center">
+  <strong>Jobs</strong>
+  <div style="text-align:right">
+    <button id="newJob" class="secondary" type="button">Run as Job</button>
+  </div>
+</div>
+
+<div class="tiny">
+  Jobs are stored locally. You can reopen, rerun, or inspect outputs without rebuilding from scratch.
+</div>
+
+<div id="jobs" class="chatbox" style="margin-top:8px; max-height:220px"></div>
+<!-- ===== JOBS PANEL END ===== -->
+
         <div id="paneChat" style="margin-top:10px;">
           <div class="chat-split">
             <div>
@@ -193,7 +210,7 @@
   $("tabChat").addEventListener("click", ()=>setTab("chat"));
   $("tabDev").addEventListener("click", ()=>setTab("dev"));
 
-  async function run({ publish=false }){
+  async function run({ publish=false, jobId=null }){
     const mode = $("mode").value;
     const goal = $("goal").value.trim();
     const context = $("context").value.trim();
