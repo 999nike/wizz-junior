@@ -530,6 +530,22 @@
       const draft = localStorage.getItem(REPO_LS.lastDraft);
       if (draft) ed.value = draft;
     }
+
+    // AI Copilot wiring
+    const aiD = $("aiDraft");
+    if (aiD) aiD.addEventListener("click", aiAskWJDraft);
+
+    const aiA = $("aiApply");
+    if (aiA) aiA.addEventListener("click", aiApplyDraft);
+
+    const aiU = $("aiUndo");
+    if (aiU) aiU.addEventListener("click", aiUndo);
+
+    const instr = $("aiInstr");
+    if (instr){
+      const saved = localStorage.getItem(AI_LS.lastInstr);
+      if (saved && !instr.value) instr.value = saved;
+    }
   }
 
 // ===========================
