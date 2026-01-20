@@ -273,16 +273,103 @@ async function run({ publish=false }){
 $("send").addEventListener("click", ()=>run({ publish:false }));
 $("publish").addEventListener("click", ()=>run({ publish:true }));
 loadLocalPrefs();
-</script>
 
-<!-- Dev console (Eruda) - always on -->
+  
+<!-- ERUDA: Always-on + Settings button -->
 <script src="https://unpkg.com/eruda/eruda.min.js"></script>
 <script>
+(function () {
+  // Init Eruda
   try {
-    eruda.init();
-    // Optional: auto-open so you can’t miss it
-    // eruda.show();
+    if (window.eruda && typeof eruda.init === "function") eruda.init();
   } catch (_) {}
+
+  // ------- Floating settings button (move + toggle) -------
+  const KEY_POS = "wizz_eruda_btn_pos_v1"; // "br" | "bl" | "tr" | "tl"
+  const KEY_ON  = "wizz_eruda_open_v1";    // "1" or "0"
+
+  function posToStyle(pos) {
+    const base = {
+      position: "fixed",
+      zIndex: 999999,
+      padding: "10px 12px",
+      borderRadius: "999px",
+      border: "1px solid rgba(255,255,255,.25)",
+      background: "rgba(15,22,32,.92)",
+      color: "#fff",
+      font: "12px system-ui, Arial",
+      cursor: "pointer",
+      userSelect: "none"
+    };
+
+    // default bottom-right
+    base.right = "12px";
+    base.bottom = "12px";
+
+    if (pos === "bl") { delete base.right; base.left = "12px"; base.bottom = "12px"; }
+    if (pos === "tr") { delete base.bottom; base.right = "12px"; base.top = "12px"; }
+    if (pos === "tl") { delete base.right; delete base.bottom; base.left = "12px"; base.top = "12px"; }
+
+    return base;
+  }
+
+  function applyStyle(el, styleObj) {
+    el.style.cssText = Object.entries(styleObj).map(([k,v]) => `${k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase())}:${v}`).join(";");
+  }
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "⚙ Debug";
+  document.body.appendChild(btn);
+
+  let pos = localStorage.getItem(KEY_POS) || "br";
+  applyStyle(btn, posToStyle(pos));
+
+  function setOpen(open) {
+    localStorage.setItem(KEY_ON, open ? "1" : "0");
+    try {
+      if (!window.eruda) return;
+      if (open) eruda.show(); else eruda.hide();
+    } catch (_) {}
+    btn.textContent = open ? "⚙ Debug (ON)" : "⚙ Debug";
+  }
+
+  const openSaved = localStorage.getItem(KEY_ON) === "1";
+  setOpen(openSaved);
+
+  // Tap = toggle open/close
+  btn.addEventListener("click", () => {
+    const isOn = localStorage.getItem(KEY_ON) === "1";
+    setOpen(!isOn);
+  });
+
+  // Long-press = move corner (cycles positions)
+  let pressTimer = null;
+  btn.addEventListener("touchstart", () => {
+    pressTimer = setTimeout(() => {
+      const order = ["br", "bl", "tr", "tl"];
+      const idx = order.indexOf(pos);
+      pos = order[(idx + 1) % order.length];
+      localStorage.setItem(KEY_POS, pos);
+      applyStyle(btn, posToStyle(pos));
+    }, 450);
+  }, { passive: true });
+
+  btn.addEventListener("touchend", () => {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+  });
+
+  // Desktop support: right-click to move
+  btn.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    const order = ["br", "bl", "tr", "tl"];
+    const idx = order.indexOf(pos);
+    pos = order[(idx + 1) % order.length];
+    localStorage.setItem(KEY_POS, pos);
+    applyStyle(btn, posToStyle(pos));
+  });
+})();
 </script>
 
 </body>
