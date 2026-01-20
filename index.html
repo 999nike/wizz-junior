@@ -71,21 +71,22 @@
 
         <label>Context (optional)</label>
         <textarea id="context" placeholder="Tone, audience, sections, features, pricing/credit pitch, etc. Short is better."></textarea>
-<div class="divider"></div>
 
-<label>Repo / Project Label (local only)</label>
-<input id="repoLabel" placeholder="Example: 999nike/junkz-shooter-landing (main)" />
-<div class="tiny">
-  Saved to your browser only (localStorage). This does NOT change where publishing goes.
-</div>
+        <div class="divider"></div>
 
-<div class="divider"></div>
+        <label>Repo / Project Label (local only)</label>
+        <input id="repoLabel" placeholder="Example: 999nike/junkz-shooter-landing (main)" />
+        <div class="tiny">
+          Saved to your browser only (localStorage). This does NOT change where publishing goes.
+        </div>
 
-<label>Publish to GitHub Repo (server-side)</label>
-<div class="tiny">
-  Uses Vercel env vars: <span class="mono">GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH</span>.
-  Token never touches the browser.
-</div>
+        <div class="divider"></div>
+
+        <label>Publish to GitHub Repo (server-side)</label>
+        <div class="tiny">
+          Uses Vercel env vars: <span class="mono">GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH</span>.
+          Token never touches the browser.
+        </div>
 
         <div class="row" style="margin-top:10px;">
           <button id="send">Build</button>
@@ -133,244 +134,271 @@
     </div>
   </div>
 
-<script>
-const $ = (id) => document.getElementById(id);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  <script>
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ---------------------------
-// Local-only UI preferences
-// ---------------------------
-const LS_KEYS = {
-  repoLabel: "wizzduo_repoLabel_v1"
-};
+  // ---------------------------
+  // Local-only UI preferences
+  // ---------------------------
+  const LS_KEYS = {
+    repoLabel: "wizzduo_repoLabel_v1"
+  };
 
-function loadLocalPrefs(){
-  const el = $("repoLabel");
-  if (!el) return;
+  function loadLocalPrefs(){
+    const el = $("repoLabel");
+    if (!el) return;
 
-  const saved = localStorage.getItem(LS_KEYS.repoLabel);
-  if (saved) el.value = saved;
+    const saved = localStorage.getItem(LS_KEYS.repoLabel);
+    if (saved) el.value = saved;
 
-  // Save on change (lightweight + reliable)
-  el.addEventListener("input", () => {
-    localStorage.setItem(LS_KEYS.repoLabel, el.value.trim());
-  });
-}
+    // Save on change (lightweight + reliable)
+    el.addEventListener("input", () => {
+      localStorage.setItem(LS_KEYS.repoLabel, el.value.trim());
+    });
+  }
 
-function setStatus(txt){ const el=$("status"); if(el) el.textContent = txt || ""; }
-function clearUI(){
-  $("chatWS").innerHTML = "";
-  $("chatWJ").innerHTML = "";
-  $("dev").textContent = "";
-  setStatus("");
-}
-function addBubble(el, text, cls=""){
-  const d=document.createElement("div");
-  d.className="bubble"+(cls?" "+cls:"");
-  d.textContent=text;
-  el.appendChild(d);
-  el.scrollTop = el.scrollHeight;
-}
-async function typeLine(el, label){
-  const t=document.createElement("div");
-  t.className="typing";
-  t.textContent=label;
-  el.appendChild(t);
-  el.scrollTop = el.scrollHeight;
-  await sleep(350);
-  t.remove();
-}
-function setTab(which){
-  const chatBtn=$("tabChat"), devBtn=$("tabDev");
-  const chatPane=$("paneChat"), devPane=$("paneDev");
-  const chatOn = which === "chat";
-  chatBtn.classList.toggle("active", chatOn);
-  devBtn.classList.toggle("active", !chatOn);
-  chatPane.style.display = chatOn ? "" : "none";
-  devPane.style.display  = chatOn ? "none" : "";
-}
-$("tabChat").addEventListener("click", ()=>setTab("chat"));
-$("tabDev").addEventListener("click", ()=>setTab("dev"));
+  function setStatus(txt){ const el=$("status"); if(el) el.textContent = txt || ""; }
+  function clearUI(){
+    $("chatWS").innerHTML = "";
+    $("chatWJ").innerHTML = "";
+    $("dev").textContent = "";
+    setStatus("");
+  }
+  function addBubble(el, text, cls=""){
+    const d=document.createElement("div");
+    d.className="bubble"+(cls?" "+cls:"");
+    d.textContent=text;
+    el.appendChild(d);
+    el.scrollTop = el.scrollHeight;
+  }
+  async function typeLine(el, label){
+    const t=document.createElement("div");
+    t.className="typing";
+    t.textContent=label;
+    el.appendChild(t);
+    el.scrollTop = el.scrollHeight;
+    await sleep(350);
+    t.remove();
+  }
+  function setTab(which){
+    const chatBtn=$("tabChat"), devBtn=$("tabDev");
+    const chatPane=$("paneChat"), devPane=$("paneDev");
+    const chatOn = which === "chat";
+    chatBtn.classList.toggle("active", chatOn);
+    devBtn.classList.toggle("active", !chatOn);
+    chatPane.style.display = chatOn ? "" : "none";
+    devPane.style.display  = chatOn ? "none" : "";
+  }
+  $("tabChat").addEventListener("click", ()=>setTab("chat"));
+  $("tabDev").addEventListener("click", ()=>setTab("dev"));
 
-async function run({ publish=false }){
-  const mode = $("mode").value;
-  const goal = $("goal").value.trim();
-  const context = $("context").value.trim();
-  if (!goal) return;
+  async function run({ publish=false }){
+    const mode = $("mode").value;
+    const goal = $("goal").value.trim();
+    const context = $("context").value.trim();
+    if (!goal) return;
 
-  $("send").disabled = true;
-  $("publish").disabled = true;
-  clearUI();
-  setStatus(publish ? "Building + publishing..." : "Building...");
+    $("send").disabled = true;
+    $("publish").disabled = true;
+    clearUI();
+    setStatus(publish ? "Building + publishing..." : "Building...");
 
-  try {
-    let url = "/api/duo";
-    let payload = { goal, context, mode, publish };
+    try {
+      let url = "/api/duo";
+      let payload = { goal, context, mode, publish };
 
-    if (mode === "ws") { url = "/api/ws"; payload = { goal, context }; }
-    if (mode === "wj") { url = "/api/wj"; payload = { task: goal, context }; }
+      if (mode === "ws") { url = "/api/ws"; payload = { goal, context }; }
+      if (mode === "wj") { url = "/api/wj"; payload = { task: goal, context }; }
 
-    const res = await fetch(url, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(payload)
+      const res = await fetch(url, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
+      });
+
+      const raw = await res.text();
+      let data=null; try{ data=JSON.parse(raw); }catch{}
+
+      if(!res.ok){
+        addBubble($("chatWS"), "ERROR:\n" + (data?.error || raw || "Unknown error"), "meta");
+        $("dev").textContent = raw || "";
+        setStatus("Error.");
+        return;
+      }
+      if(!data){
+        addBubble($("chatWS"), "ERROR:\nServer returned non-JSON:\n" + raw, "meta");
+        $("dev").textContent = raw || "";
+        setStatus("Error.");
+        return;
+      }
+
+      // Dev log always available
+      $("dev").textContent = JSON.stringify(data, null, 2);
+
+      // Duo web build flow
+      if(mode === "web_duo"){
+        const wsEl=$("chatWS"), wjEl=$("chatWJ");
+
+        await typeLine(wsEl, "WS is planning...");
+        if (data.ws_plan_summary) addBubble(wsEl, data.ws_plan_summary, "meta");
+
+        await typeLine(wjEl, "WJ is building files...");
+        if (Array.isArray(data.files_built)){
+          addBubble(wjEl, "FILES BUILT:\n" + data.files_built.map(f=>"- "+f).join("\n"), "meta");
+        }
+
+        await typeLine(wsEl, "WS is reviewing...");
+        if (data.final_summary) addBubble(wsEl, data.final_summary);
+
+        if (data.publish_status){
+          addBubble(wsEl, "PUBLISH:\n" + data.publish_status, "meta");
+        }
+
+        setStatus("Done.");
+        return;
+      }
+
+      // WS-only / WJ-only fallback rendering
+      addBubble($("chatWS"), JSON.stringify(data, null, 2), "meta");
+      setStatus("Done.");
+    } catch(e){
+      addBubble($("chatWS"), "CLIENT ERROR:\n" + String(e), "meta");
+      setStatus("Error.");
+    } finally {
+      $("send").disabled = false;
+      $("publish").disabled = false;
+    }
+  }
+
+  $("send").addEventListener("click", ()=>run({ publish:false }));
+  $("publish").addEventListener("click", ()=>run({ publish:true }));
+  loadLocalPrefs();
+  </script>
+
+  <!-- ERUDA: working, always-available launcher (no <button> styling conflicts) -->
+  <script>
+  (function(){
+    const ERUDA_KEY_OPEN = "wizz_eruda_open_v1";   // "1" or "0"
+    const ERUDA_KEY_POS  = "wizz_eruda_pos_v1";    // "br"|"bl"|"tr"|"tl"
+
+    function makeLauncher(){
+      const el = document.createElement("div");
+      el.textContent = "⚙ Debug";
+      el.setAttribute("role", "button");
+      el.style.cssText = [
+        "position:fixed",
+        "z-index:999999",
+        "padding:10px 12px",
+        "border-radius:999px",
+        "border:1px solid rgba(255,255,255,.25)",
+        "background:rgba(15,22,32,.92)",
+        "color:#fff",
+        "font:12px system-ui,Arial",
+        "font-weight:700",
+        "cursor:pointer",
+        "user-select:none",
+        "opacity:.92"
+      ].join(";");
+      document.body.appendChild(el);
+      return el;
+    }
+
+    function applyPos(el, pos){
+      // clear anchors
+      el.style.left = "";
+      el.style.right = "";
+      el.style.top = "";
+      el.style.bottom = "";
+
+      // default bottom-right
+      if (!pos) pos = "br";
+      if (pos === "br") { el.style.right="12px"; el.style.bottom="12px"; }
+      if (pos === "bl") { el.style.left="12px"; el.style.bottom="12px"; }
+      if (pos === "tr") { el.style.right="12px"; el.style.top="12px"; }
+      if (pos === "tl") { el.style.left="12px"; el.style.top="12px"; }
+    }
+
+    function loadScript(src){
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensureEruda(){
+      if (window.eruda && typeof eruda.init === "function") return true;
+
+      // Try unpkg, then jsdelivr
+      try {
+        await loadScript("https://unpkg.com/eruda/eruda.min.js");
+      } catch {
+        try {
+          await loadScript("https://cdn.jsdelivr.net/npm/eruda/eruda.min.js");
+        } catch {
+          return false;
+        }
+      }
+      return (window.eruda && typeof eruda.init === "function");
+    }
+
+    function setOpen(isOpen, launcher){
+      localStorage.setItem(ERUDA_KEY_OPEN, isOpen ? "1" : "0");
+      launcher.textContent = isOpen ? "⚙ Debug (ON)" : "⚙ Debug";
+      try {
+        if (!window.eruda) return;
+        if (!eruda._isInited) eruda.init();
+        if (isOpen) eruda.show(); else eruda.hide();
+      } catch {}
+    }
+
+    const launcher = makeLauncher();
+    const savedPos = localStorage.getItem(ERUDA_KEY_POS) || "br";
+    applyPos(launcher, savedPos);
+
+    // tap toggles open/close
+    launcher.addEventListener("click", async () => {
+      const ok = await ensureEruda();
+      if (!ok) {
+        launcher.textContent = "⚙ Debug (BLOCKED)";
+        alert("Eruda could not load (CDN blocked/unreachable).");
+        return;
+      }
+      const isOn = localStorage.getItem(ERUDA_KEY_OPEN) === "1";
+      setOpen(!isOn, launcher);
     });
 
-    const raw = await res.text();
-    let data=null; try{ data=JSON.parse(raw); }catch{}
+    // long press cycles corner position
+    let pressTimer = null;
+    launcher.addEventListener("touchstart", () => {
+      pressTimer = setTimeout(() => {
+        const order = ["br","bl","tr","tl"];
+        const cur = localStorage.getItem(ERUDA_KEY_POS) || "br";
+        const idx = order.indexOf(cur);
+        const next = order[(idx + 1) % order.length];
+        localStorage.setItem(ERUDA_KEY_POS, next);
+        applyPos(launcher, next);
+      }, 450);
+    }, { passive:true });
 
-    if(!res.ok){
-      addBubble($("chatWS"), "ERROR:\n" + (data?.error || raw || "Unknown error"), "meta");
-      $("dev").textContent = raw || "";
-      setStatus("Error.");
-      return;
-    }
-    if(!data){
-      addBubble($("chatWS"), "ERROR:\nServer returned non-JSON:\n" + raw, "meta");
-      $("dev").textContent = raw || "";
-      setStatus("Error.");
-      return;
-    }
+    launcher.addEventListener("touchend", () => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = null;
+    });
 
-    // Dev log always available
-    $("dev").textContent = JSON.stringify(data, null, 2);
-
-    // Duo web build flow
-    if(mode === "web_duo"){
-      const wsEl=$("chatWS"), wjEl=$("chatWJ");
-
-      await typeLine(wsEl, "WS is planning...");
-      if (data.ws_plan_summary) addBubble(wsEl, data.ws_plan_summary, "meta");
-
-      await typeLine(wjEl, "WJ is building files...");
-      if (Array.isArray(data.files_built)){
-        addBubble(wjEl, "FILES BUILT:\n" + data.files_built.map(f=>"- "+f).join("\n"), "meta");
-      }
-
-      await typeLine(wsEl, "WS is reviewing...");
-      if (data.final_summary) addBubble(wsEl, data.final_summary);
-
-      if (data.publish_status){
-        addBubble(wsEl, "PUBLISH:\n" + data.publish_status, "meta");
-      }
-
-      setStatus("Done.");
-      return;
-    }
-
-    // WS-only / WJ-only fallback rendering
-    addBubble($("chatWS"), JSON.stringify(data, null, 2), "meta");
-    setStatus("Done.");
-  } catch(e){
-    addBubble($("chatWS"), "CLIENT ERROR:\n" + String(e), "meta");
-    setStatus("Error.");
-  } finally {
-    $("send").disabled = false;
-    $("publish").disabled = false;
-  }
-}
-
-$("send").addEventListener("click", ()=>run({ publish:false }));
-$("publish").addEventListener("click", ()=>run({ publish:true }));
-loadLocalPrefs();
-
-  
-<!-- ERUDA: Always-on + Settings button -->
-<script src="https://unpkg.com/eruda/eruda.min.js"></script>
-<script>
-(function () {
-  // Init Eruda
-  try {
-    if (window.eruda && typeof eruda.init === "function") eruda.init();
-  } catch (_) {}
-
-  // ------- Floating settings button (move + toggle) -------
-  const KEY_POS = "wizz_eruda_btn_pos_v1"; // "br" | "bl" | "tr" | "tl"
-  const KEY_ON  = "wizz_eruda_open_v1";    // "1" or "0"
-
-  function posToStyle(pos) {
-    const base = {
-      position: "fixed",
-      zIndex: 999999,
-      padding: "10px 12px",
-      borderRadius: "999px",
-      border: "1px solid rgba(255,255,255,.25)",
-      background: "rgba(15,22,32,.92)",
-      color: "#fff",
-      font: "12px system-ui, Arial",
-      cursor: "pointer",
-      userSelect: "none"
-    };
-
-    // default bottom-right
-    base.right = "12px";
-    base.bottom = "12px";
-
-    if (pos === "bl") { delete base.right; base.left = "12px"; base.bottom = "12px"; }
-    if (pos === "tr") { delete base.bottom; base.right = "12px"; base.top = "12px"; }
-    if (pos === "tl") { delete base.right; delete base.bottom; base.left = "12px"; base.top = "12px"; }
-
-    return base;
-  }
-
-  function applyStyle(el, styleObj) {
-    el.style.cssText = Object.entries(styleObj).map(([k,v]) => `${k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase())}:${v}`).join(";");
-  }
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.textContent = "⚙ Debug";
-  document.body.appendChild(btn);
-
-  let pos = localStorage.getItem(KEY_POS) || "br";
-  applyStyle(btn, posToStyle(pos));
-
-  function setOpen(open) {
-    localStorage.setItem(KEY_ON, open ? "1" : "0");
-    try {
-      if (!window.eruda) return;
-      if (open) eruda.show(); else eruda.hide();
-    } catch (_) {}
-    btn.textContent = open ? "⚙ Debug (ON)" : "⚙ Debug";
-  }
-
-  const openSaved = localStorage.getItem(KEY_ON) === "1";
-  setOpen(openSaved);
-
-  // Tap = toggle open/close
-  btn.addEventListener("click", () => {
-    const isOn = localStorage.getItem(KEY_ON) === "1";
-    setOpen(!isOn);
-  });
-
-  // Long-press = move corner (cycles positions)
-  let pressTimer = null;
-  btn.addEventListener("touchstart", () => {
-    pressTimer = setTimeout(() => {
-      const order = ["br", "bl", "tr", "tl"];
-      const idx = order.indexOf(pos);
-      pos = order[(idx + 1) % order.length];
-      localStorage.setItem(KEY_POS, pos);
-      applyStyle(btn, posToStyle(pos));
-    }, 450);
-  }, { passive: true });
-
-  btn.addEventListener("touchend", () => {
-    if (pressTimer) clearTimeout(pressTimer);
-    pressTimer = null;
-  });
-
-  // Desktop support: right-click to move
-  btn.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    const order = ["br", "bl", "tr", "tl"];
-    const idx = order.indexOf(pos);
-    pos = order[(idx + 1) % order.length];
-    localStorage.setItem(KEY_POS, pos);
-    applyStyle(btn, posToStyle(pos));
-  });
-})();
-</script>
+    // restore open state on load (optional)
+    (async () => {
+      const wantsOpen = localStorage.getItem(ERUDA_KEY_OPEN) === "1";
+      if (!wantsOpen) return;
+      const ok = await ensureEruda();
+      if (!ok) return;
+      setOpen(true, launcher);
+    })();
+  })();
+  </script>
 
 </body>
 </html>
